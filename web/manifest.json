@@ -1,11 +1,11 @@
 {
-    "name": "calculator_app",
-    "short_name": "calculator_app",
+    "name": "嗷嗷算",
+    "short_name": "嗷嗷算",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#hexcode",
     "theme_color": "#hexcode",
-    "description": "A new Flutter project.",
+    "description": "嗷嗷算 - 简洁好用的计算器应用",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

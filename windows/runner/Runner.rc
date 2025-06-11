@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "calculator_app" "\0"
+            VALUE "FileDescription", "嗷嗷算" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "calculator_app" "\0"
+            VALUE "InternalName", "嗷嗷算" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
             VALUE "OriginalFilename", "calculator_app.exe" "\0"
-            VALUE "ProductName", "calculator_app" "\0"
+            VALUE "ProductName", "嗷嗷算" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

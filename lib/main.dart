@@ -13,7 +13,7 @@ class CalculatorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'iOS风格计算器',
+      title: '嗷嗷算',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         fontFamily: 'SF Pro Display',
