@@ -6,6 +6,19 @@ on:
   pull_request:
     branches: [ main ]
 
+# 添加权限设置
+permissions:
+  contents: write
+  actions: read
+  checks: write
+  deployments: write
+  issues: write
+  packages: write
+  pull-requests: write
+  repository-projects: write
+  security-events: write
+  statuses: write
+
 jobs:
   # Android 构建
   build-android:
@@ -66,10 +79,14 @@ jobs:
           channel: 'stable'
       - run: flutter pub get
       - run: flutter build web --release
+      - name: Create Web ZIP
+        run: |
+          cd build/web
+          zip -r Calculator-Web.zip *
       - uses: actions/upload-artifact@v4
         with:
           name: web-build
-          path: build/web/
+          path: build/web/Calculator-Web.zip
 
   # Windows 构建
   build-windows:
@@ -141,6 +158,8 @@ jobs:
     needs: [build-android, build-ios, build-web, build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -154,14 +173,23 @@ jobs:
           echo "RELEASE_TAG=v$VERSION-$TIMESTAMP" >> $GITHUB_OUTPUT
           echo "BUILD_TIME=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
 
+      - name: Prepare release files
+        run: |
+          # 重命名文件以匹配发布描述中的命名
+          mkdir -p release-files
+          cp android-apk/app-release.apk release-files/Calculator-Android.apk
+          cp android-aab/app-release.aab release-files/Calculator-Android.aab
+          cp ios-ipa/Calculator.ipa release-files/Calculator-iOS.ipa
+          cp web-build/Calculator-Web.zip release-files/Calculator-Web.zip
+          cp windows-build/Calculator-Windows.zip release-files/Calculator-Windows.zip
+          cp macos-build/Calculator-macOS.zip release-files/Calculator-macOS.zip
+          cp linux-build/Calculator-Linux.tar.gz release-files/Calculator-Linux.tar.gz
+
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.RELEASE_TAG }}
-          release_name: Calculator App v${{ steps.version.outputs.VERSION }}
+          name: Calculator App v${{ steps.version.outputs.VERSION }}
           body: |
             ## 🧮 iOS风格计算器应用 - 自动构建版本
 
@@ -197,79 +225,6 @@ jobs:
             *此版本由GitHub Actions自动构建和发布*
           draft: false
           prerelease: false
-
-      # 上传各平台构建文件到Release
-      - name: Upload Android APK
-        uses: actions/upload-release-asset@v1
+          files: release-files/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: android-apk/app-release.apk
-          asset_name: Calculator-Android.apk
-          asset_content_type: application/vnd.android.package-archive
-
-      - name: Upload Android AAB
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: android-aab/app-release.aab
-          asset_name: Calculator-Android.aab
-          asset_content_type: application/octet-stream
-
-      - name: Upload iOS IPA
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ios-ipa/Calculator.ipa
-          asset_name: Calculator-iOS.ipa
-          asset_content_type: application/octet-stream
-
-      - name: Create and Upload Web ZIP
-        run: |
-          cd web-build
-          zip -r Calculator-Web.zip *
-          
-      - name: Upload Web Build
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: web-build/Calculator-Web.zip
-          asset_name: Calculator-Web.zip
-          asset_content_type: application/zip
-
-      - name: Upload Windows Build
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: windows-build/Calculator-Windows.zip
-          asset_name: Calculator-Windows.zip
-          asset_content_type: application/zip
-
-      - name: Upload macOS Build
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: macos-build/Calculator-macOS.zip
-          asset_name: Calculator-macOS.zip
-          asset_content_type: application/zip
-
-      - name: Upload Linux Build
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: linux-build/Calculator-Linux.tar.gz
-          asset_name: Calculator-Linux.tar.gz
-          asset_content_type: application/gzip 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
