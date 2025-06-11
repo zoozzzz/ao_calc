@@ -1,0 +1,275 @@
+name: Build All Platforms
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # Android 构建
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter test
+      - run: flutter build apk --release
+      - run: flutter build appbundle --release
+      - uses: actions/upload-artifact@v3
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+      - uses: actions/upload-artifact@v3
+        with:
+          name: android-aab  
+          path: build/app/outputs/bundle/release/app-release.aab
+
+  # iOS 构建
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build ios --release --no-codesign
+      - name: Create IPA
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r Calculator.ipa Payload/
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ios-ipa
+          path: build/ios/iphoneos/Calculator.ipa
+
+  # Web 构建
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build web --release
+      - uses: actions/upload-artifact@v3
+        with:
+          name: web-build
+          path: build/web/
+
+  # Windows 构建
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Create Windows ZIP
+        shell: powershell
+        run: |
+          cd build/windows/x64/runner/Release
+          Compress-Archive -Path * -DestinationPath Calculator-Windows.zip
+      - uses: actions/upload-artifact@v3
+        with:
+          name: windows-build
+          path: build/windows/x64/runner/Release/Calculator-Windows.zip
+
+  # macOS 构建
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build macos --release
+      - name: Create macOS ZIP
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r Calculator-macOS.zip calculator_app.app
+      - uses: actions/upload-artifact@v3
+        with:
+          name: macos-build
+          path: build/macos/Build/Products/Release/Calculator-macOS.zip
+
+  # Linux 构建
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.16.0'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build linux --release
+      - name: Create Linux archive
+        run: |
+          cd build/linux/x64/release/bundle
+          tar -czf Calculator-Linux.tar.gz *
+      - uses: actions/upload-artifact@v3
+        with:
+          name: linux-build
+          path: build/linux/x64/release/bundle/Calculator-Linux.tar.gz
+
+  # 创建Release (只在推送到main分支时)
+  create-release:
+    needs: [build-android, build-ios, build-web, build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+      
+      - name: Get version from pubspec.yaml
+        id: version
+        run: |
+          VERSION=$(grep 'version:' pubspec.yaml | cut -d ' ' -f 2 | cut -d '+' -f 1)
+          TIMESTAMP=$(date +'%Y%m%d-%H%M%S')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "RELEASE_TAG=v$VERSION-$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "BUILD_TIME=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.RELEASE_TAG }}
+          release_name: Calculator App v${{ steps.version.outputs.VERSION }}
+          body: |
+            ## 🧮 iOS风格计算器应用 - 自动构建版本
+
+            ### 📋 版本信息
+            - **版本号**: ${{ steps.version.outputs.VERSION }}
+            - **构建时间**: ${{ steps.version.outputs.BUILD_TIME }}
+            - **提交哈希**: ${{ github.sha }}
+            - **分支**: ${{ github.ref_name }}
+
+            ### 🚀 支持平台
+            - ✅ **Android** (APK + AAB)
+            - ✅ **iOS** (IPA - 需要重新签名)
+            - ✅ **Web** (静态网页)
+            - ✅ **Windows** (可执行程序)
+            - ✅ **macOS** (应用程序包)
+            - ✅ **Linux** (可执行程序)
+
+            ### 📥 下载使用说明
+            - **Android**: 下载 `Calculator-Android.apk` 直接安装
+            - **iOS**: 下载 `Calculator-iOS.ipa` (需要开发者证书重新签名)
+            - **Web**: 下载 `Calculator-Web.zip` 解压后部署到Web服务器
+            - **Windows**: 下载 `Calculator-Windows.zip` 解压后运行 `calculator_app.exe`
+            - **macOS**: 下载 `Calculator-macOS.zip` 解压后运行 `calculator_app.app`
+            - **Linux**: 下载 `Calculator-Linux.tar.gz` 解压后运行 `calculator_app`
+
+            ### ✨ 功能特性
+            - 🎨 完全仿照iOS计算器设计
+            - 📱 支持竖屏基础计算和横屏科学计算
+            - 🔄 自适应布局，完美支持各种屏幕尺寸
+            - 🧮 支持基础四则运算和高级科学计算功能
+
+            ---
+            *此版本由GitHub Actions自动构建和发布*
+          draft: false
+          prerelease: false
+
+      # 上传各平台构建文件到Release
+      - name: Upload Android APK
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: android-apk/app-release.apk
+          asset_name: Calculator-Android.apk
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: Upload Android AAB
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: android-aab/app-release.aab
+          asset_name: Calculator-Android.aab
+          asset_content_type: application/octet-stream
+
+      - name: Upload iOS IPA
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ios-ipa/Calculator.ipa
+          asset_name: Calculator-iOS.ipa
+          asset_content_type: application/octet-stream
+
+      - name: Create and Upload Web ZIP
+        run: |
+          cd web-build
+          zip -r Calculator-Web.zip *
+          
+      - name: Upload Web Build
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: web-build/Calculator-Web.zip
+          asset_name: Calculator-Web.zip
+          asset_content_type: application/zip
+
+      - name: Upload Windows Build
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: windows-build/Calculator-Windows.zip
+          asset_name: Calculator-Windows.zip
+          asset_content_type: application/zip
+
+      - name: Upload macOS Build
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: macos-build/Calculator-macOS.zip
+          asset_name: Calculator-macOS.zip
+          asset_content_type: application/zip
+
+      - name: Upload Linux Build
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: linux-build/Calculator-Linux.tar.gz
+          asset_name: Calculator-Linux.tar.gz
+          asset_content_type: application/gzip 

@@ -152,6 +152,26 @@ static const Color _black = Colors.black;            // 背景颜色
 - 支持连续运算和复杂表达式
 - 错误处理和边界情况处理
 
+## CI/CD 自动化
+
+### GitHub Actions 工作流
+项目已配置完整的CI/CD工作流，支持：
+
+- ✅ **自动构建**: 推送到`main`分支后自动构建所有平台
+- ✅ **自动测试**: 运行单元测试确保代码质量
+- ✅ **自动发布**: 创建GitHub Release并上传构建文件
+- ✅ **多平台支持**: 同时构建Android、iOS、Web、Windows、macOS、Linux
+
+### 构建状态
+![Build Status](https://github.com/USERNAME/REPOSITORY/workflows/Build%20All%20Platforms/badge.svg)
+
+### 使用自动构建
+1. 推送代码到`main`分支
+2. GitHub Actions自动开始构建
+3. 构建完成后在Releases页面下载应用
+
+详细说明请查看 [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)
+
 ## 贡献指南
 
 欢迎提交Issue和Pull Request来改进这个项目！

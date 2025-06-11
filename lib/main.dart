@@ -57,14 +57,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             _isPortrait = orientation == Orientation.portrait;
             return Column(
               children: [
-                // 显示屏区域
+                // 显示屏区域 - 横屏时减少高度比例
                 Expanded(
                   flex: _isPortrait ? 2 : 1,
                   child: _buildDisplay(),
                 ),
-                // 按钮区域
+                // 按钮区域 - 横屏时增加高度比例
                 Expanded(
-                  flex: _isPortrait ? 3 : 2,
+                  flex: _isPortrait ? 3 : 3,
                   child: _isPortrait ? _buildPortraitButtons() : _buildLandscapeButtons(),
                 ),
               ],
@@ -78,7 +78,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   Widget _buildDisplay() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(_isPortrait ? 20 : 10),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -86,18 +86,18 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
           if (_expression.isNotEmpty)
             Text(
               _expression,
-              style: const TextStyle(
+              style: TextStyle(
                 color: _lightGray,
-                fontSize: 20,
+                fontSize: _isPortrait ? 20 : 16,
               ),
               textAlign: TextAlign.right,
             ),
-          const SizedBox(height: 10),
+          SizedBox(height: _isPortrait ? 10 : 5),
           Text(
             _display,
-            style: const TextStyle(
+            style: TextStyle(
               color: _white,
-              fontSize: 60,
+              fontSize: _isPortrait ? 60 : 40,
               fontWeight: FontWeight.w300,
             ),
             textAlign: TextAlign.right,
@@ -122,14 +122,17 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
   }
 
   Widget _buildLandscapeButtons() {
-    return Column(
-      children: [
-        _buildButtonRow(['(', ')', 'mc', 'm+', 'm-', 'mr', 'AC', '±', '%', '÷']),
-        _buildButtonRow(['2nd', 'x²', 'x³', 'xʸ', 'eˣ', '10ˣ', '7', '8', '9', '×']),
-        _buildButtonRow(['1/x', '²√x', '³√x', 'ʸ√x', 'ln', 'log₁₀', '4', '5', '6', '-']),
-        _buildButtonRow(['x!', 'sin', 'cos', 'tan', 'e', 'EE', '1', '2', '3', '+']),
-        _buildButtonRow(['Rad', 'sinh', 'cosh', 'tanh', 'π', 'Rand', '0', '', '.', '=']),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+      child: Column(
+        children: [
+          _buildButtonRow(['(', ')', 'mc', 'm+', 'm-', 'mr', 'AC', '±', '%', '÷']),
+          _buildButtonRow(['2nd', 'x²', 'x³', 'xʸ', 'eˣ', '10ˣ', '7', '8', '9', '×']),
+          _buildButtonRow(['1/x', '²√x', '³√x', 'ʸ√x', 'ln', 'log₁₀', '4', '5', '6', '-']),
+          _buildButtonRow(['x!', 'sin', 'cos', 'tan', 'e', 'EE', '1', '2', '3', '+']),
+          _buildButtonRow(['Rad', 'sinh', 'cosh', 'tanh', 'π', 'Rand', '0', '', '.', '=']),
+        ],
+      ),
     );
   }
 
@@ -173,10 +176,13 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       textColor = _white;
     }
 
+    // 横屏模式下的按钮间距调整
+    double margin = _isPortrait ? 1.0 : 0.5;
+    
     return Expanded(
       flex: flex,
       child: Container(
-        margin: const EdgeInsets.all(1),
+        margin: EdgeInsets.all(margin),
         child: ElevatedButton(
           onPressed: () => _onButtonPressed(text),
           style: ElevatedButton.styleFrom(
@@ -184,9 +190,12 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             foregroundColor: textColor,
             shape: text == '0' && _isPortrait
                 ? const StadiumBorder()
-                : const CircleBorder(),
+                : _isPortrait 
+                  ? const CircleBorder()
+                  : RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             padding: EdgeInsets.zero,
             elevation: 0,
+            minimumSize: Size.zero,
           ),
           child: Container(
             width: double.infinity,
@@ -197,11 +206,14 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
             padding: text == '0' && _isPortrait
                 ? const EdgeInsets.only(left: 35)
                 : EdgeInsets.zero,
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: _isPortrait ? 30 : 20,
-                fontWeight: FontWeight.w400,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: _isPortrait ? 30 : 16,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
           ),
