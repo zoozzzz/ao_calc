@@ -106,7 +106,7 @@ jobs:
       - name: Create macOS ZIP
         run: |
           cd build/macos/Build/Products/Release
-          zip -r Calculator-macOS.zip calculator_app.app
+          zip -r Calculator-macOS.zip 嗷嗷算.app
       - uses: actions/upload-artifact@v4
         with:
           name: macos-build
